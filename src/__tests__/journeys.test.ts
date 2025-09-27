@@ -150,7 +150,7 @@ describe('Journey API Endpoints', () => {
 
   describe('Content-Type and Headers', () => {
     it('should handle malformed JSON gracefully', async () => {
-      const response = await request(app)
+      await request(app)
         .post('/api/journeys')
         .set('Content-Type', 'text/plain')
         .send('{"title": "Test"}')
