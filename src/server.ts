@@ -1,5 +1,5 @@
 import express from 'express';
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import journeyRoutes from './routes/journeys';
 
 const app = express();
