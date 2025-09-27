@@ -51,3 +51,13 @@ This applies to ALL coding tasks, not just testing-related work.
 - Only for development/test databases, never production
 
 **Key Learning**: Always explain database operations and get explicit user consent
+
+### CI/CD Pipeline Setup (Dec 2024)
+**Problem**: Tests passing locally but failing in CI with "table does not exist" errors
+**Root Cause**: CI pipeline missing Prisma setup steps
+**Solution**: Add Prisma client generation and database setup to CI workflow
+- Add `npx prisma generate` step after npm install
+- Add `npx prisma db push` step before running tests
+- Ensure CI has same database setup as local development
+
+**Key Learning**: CI environments are clean slates - they need all setup steps that local dev requires
