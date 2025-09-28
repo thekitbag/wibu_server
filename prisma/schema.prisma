@@ -16,4 +16,15 @@ datasource db {
 model Journey {
   id    String @id @default(cuid())
   title String
+  stops Stop[]
+}
+
+model Stop {
+  id        String  @id @default(cuid())
+  title     String
+  note      String?
+  image_url String
+  order     Int
+  journeyId String
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
 }
