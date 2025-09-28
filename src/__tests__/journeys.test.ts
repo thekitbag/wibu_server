@@ -2,10 +2,7 @@ import request from 'supertest';
 import { app } from '../server';
 import { prisma } from './setup';
 
-beforeEach(async () => {
-  await prisma.stop.deleteMany();
-  await prisma.journey.deleteMany();
-});
+// Each describe block will handle its own cleanup as needed
 
 describe('Journey API Endpoints', () => {
   describe('POST /api/journeys', () => {
