@@ -2,6 +2,11 @@ import request from 'supertest';
 import { app } from '../server';
 import { prisma } from './setup';
 
+beforeEach(async () => {
+  await prisma.stop.deleteMany();
+  await prisma.journey.deleteMany();
+});
+
 describe('Journey API Endpoints', () => {
   describe('POST /api/journeys', () => {
     it('should create a new journey with valid title', async () => {

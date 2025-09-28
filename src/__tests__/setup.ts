@@ -8,15 +8,18 @@ const prisma = new PrismaClient();
 beforeAll(async () => {
   // Ensure the database is set up for tests
   try {
-    execSync('npx prisma db push', { stdio: 'inherit' });
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
   } catch (error) {
-    console.error('Failed to setup database:', error);
+    console.warn('Migration failed, trying db push:', error);
+    try {
+      execSync('npx prisma db push', { stdio: 'inherit' });
+    } catch (pushError) {
+      console.error('Failed to setup database:', pushError);
+    }
   }
 });
 
-beforeEach(async () => {
-  await prisma.journey.deleteMany();
-});
+// No global cleanup - each test file handles its own cleanup
 
 afterAll(async () => {
   await prisma.$disconnect();
