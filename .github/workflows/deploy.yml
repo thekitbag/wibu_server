@@ -43,4 +43,5 @@ jobs:
             cd /var/www/wibu_server
             npm install --production
             npx prisma migrate deploy
+            npx prisma generate
             pm2 restart wibu-api || pm2 start build/server.js --name wibu-api
