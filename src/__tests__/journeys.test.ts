@@ -2,9 +2,11 @@ import request from 'supertest';
 import { app } from '../server';
 import { prisma } from './setup';
 
-// Each describe block will handle its own cleanup as needed
-
 describe('Journey API Endpoints', () => {
+  beforeEach(async () => {
+    await prisma.stop.deleteMany();
+    await prisma.journey.deleteMany();
+  });
   describe('POST /api/journeys', () => {
     it('should create a new journey with valid title', async () => {
       const journeyData = { title: 'My Test Journey' };

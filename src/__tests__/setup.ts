@@ -8,13 +8,14 @@ const prisma = new PrismaClient();
 beforeAll(async () => {
   // Ensure the database is set up for tests
   try {
+    // Try to apply migrations first for CI environments
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-  } catch (error) {
-    console.warn('Migration failed, trying db push:', error);
+  } catch {
+    // If migrations fail, fall back to db push
     try {
       execSync('npx prisma db push', { stdio: 'inherit' });
-    } catch (pushError) {
-      console.error('Failed to setup database:', pushError);
+    } catch {
+      console.warn('Database setup failed, but tests may still work with existing schema');
     }
   }
 });

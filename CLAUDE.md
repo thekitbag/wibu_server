@@ -61,3 +61,14 @@ This applies to ALL coding tasks, not just testing-related work.
 - Ensure CI has same database setup as local development
 
 **Key Learning**: CI environments are clean slates - they need all setup steps that local dev requires
+
+### Always Run Tests Before Task Completion (Dec 2024)
+**Problem**: Finishing a task without running final tests, leading to CI failures
+**Root Cause**: Not following the pre-completion checklist consistently
+**Solution**: ALWAYS run tests before marking any coding task complete
+- Even if tests passed earlier, run them again after any changes
+- Test isolation issues can emerge from seemingly unrelated changes
+- CI environments may behave differently than local development
+- Small changes like removing unused files can affect test behavior
+
+**Key Learning**: NEVER mark a coding task complete without running `npm test && npm run lint` as the final step
