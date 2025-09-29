@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
 process.env.NODE_ENV = 'test';
+process.env.STRIPE_SECRET_KEY = 'sk_test_mock_key_for_testing';
+process.env.STRIPE_WEBHOOK_SECRET = 'whsec_mock_webhook_secret_for_testing';
 
 const prisma = new PrismaClient();
 

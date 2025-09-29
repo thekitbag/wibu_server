@@ -44,9 +44,22 @@ export const getJourneyById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Journey not found' });
     }
 
-    res.json({
+    const response: {
+      id: string;
+      title: string;
+      paid: boolean;
+      stops: Array<{
+        id: string;
+        title: string;
+        note: string | null;
+        image_url: string | null;
+        order: number;
+      }>;
+      shareableToken?: string;
+    } = {
       id: journey.id,
       title: journey.title,
+      paid: journey.paid,
       stops: journey.stops.map(stop => ({
         id: stop.id,
         title: stop.title,
@@ -54,7 +67,14 @@ export const getJourneyById = async (req: Request, res: Response) => {
         image_url: stop.image_url,
         order: stop.order
       }))
-    });
+    };
+
+    // Include shareableToken only if journey is paid
+    if (journey.paid && journey.shareableToken) {
+      response.shareableToken = journey.shareableToken;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching journey:', error);
     res.status(500).json({ error: 'Internal server error' });
