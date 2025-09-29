@@ -14,9 +14,11 @@ datasource db {
 }
 
 model Journey {
-  id    String @id @default(cuid())
-  title String
-  stops Stop[]
+  id             String  @id @default(cuid())
+  title          String
+  paid           Boolean @default(false)
+  shareableToken String? @unique
+  stops          Stop[]
 }
 
 model Stop {
