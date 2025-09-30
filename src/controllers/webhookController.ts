@@ -1,25 +1,15 @@
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
-import { randomBytes } from 'crypto';
-import { prisma } from '../server';
+import { verifyStripeWebhook, processSuccessfulPayment } from '../services/paymentService';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY environment variable is required');
-}
-
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error('STRIPE_WEBHOOK_SECRET environment variable is required');
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-const generateShareableToken = (): string => {
-  return randomBytes(32).toString('hex');
-};
-
+/**
+ * Handles incoming Stripe webhook events
+ * Processes payment completion events and updates journey payment status
+ */
 export const handleStripeWebhook = async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'];
 
+  // Validate required signature header
   if (!sig) {
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
@@ -27,19 +17,21 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
   let event: Stripe.Event;
 
   try {
-    // Verify webhook signature
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    // Verify webhook signature using payment service
+    // Convert signature header to string if it's an array
+    const signatureString = Array.isArray(sig) ? sig[0] : sig;
+    event = verifyStripeWebhook(req.body, signatureString);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
-  // Handle the event
+  // Process different webhook event types
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      // Get journeyId from metadata
+      // Extract journey ID from Stripe session metadata
       const journeyId = session.metadata?.journeyId;
 
       if (!journeyId) {
@@ -48,18 +40,8 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
       }
 
       try {
-        // Generate unique shareable token
-        const shareableToken = generateShareableToken();
-
-        // Update journey with payment status and shareable token
-        await prisma.journey.update({
-          where: { id: journeyId },
-          data: {
-            paid: true,
-            shareableToken: shareableToken,
-          },
-        });
-
+        // Process the successful payment using payment service
+        const shareableToken = await processSuccessfulPayment(journeyId);
         console.log(`Journey ${journeyId} marked as paid with token ${shareableToken}`);
       } catch (error) {
         console.error('Error updating journey after payment:', error);
@@ -68,9 +50,10 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
       break;
     }
     default:
+      // Log unhandled event types for monitoring
       console.log(`Unhandled event type: ${event.type}`);
   }
 
-  // Return a response to acknowledge receipt of the event
+  // Acknowledge successful receipt of the webhook
   res.json({ received: true });
 };

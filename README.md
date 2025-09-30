@@ -23,7 +23,20 @@ This is the backend for the "What I Bought You" application. It is built with No
     npx prisma migrate dev
     ```
 
-3.  **Run the Development Server:**
+3.  **Set Up Environment Variables:**
+
+    Create a `.env` file in the root of the `wibu_server` directory. This file is required for Stripe integration and for defining the client URL for local development. Add the following variables:
+
+    ```
+    # The URL of the frontend client for CORS and redirects
+    CLIENT_URL=http://localhost:5173
+
+    # Your Stripe API keys for testing
+    STRIPE_SECRET_KEY=sk_test_...
+    STRIPE_WEBHOOK_SECRET=whsec_...
+    ```
+
+4.  **Run the Development Server:**
 
     ```bash
     npm run dev
