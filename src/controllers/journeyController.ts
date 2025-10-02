@@ -94,3 +94,50 @@ export const getJourneyById = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+/**
+ * Reveals a journey using a secure shareable token
+ * Only works for paid journeys - provides secure access to paid content
+ */
+export const revealJourneyByToken = async (req: Request, res: Response) => {
+  try {
+    const { shareableToken } = req.params;
+
+    // Find journey by shareable token with all associated stops
+    const journey = await prisma.journey.findUnique({
+      where: { shareableToken },
+      include: {
+        stops: {
+          orderBy: {
+            order: 'asc' // Ensure stops are returned in correct sequence
+          }
+        }
+      }
+    });
+
+    // Return 404 if journey not found OR if journey is not paid
+    // This maintains security by not revealing unpaid content
+    if (!journey || !journey.paid) {
+      return res.status(404).json({ error: 'Journey not found' });
+    }
+
+    // Return full journey data for paid journeys
+    const response = {
+      id: journey.id,
+      title: journey.title,
+      paid: journey.paid,
+      stops: journey.stops.map(stop => ({
+        id: stop.id,
+        title: stop.title,
+        note: stop.note,
+        image_url: stop.image_url,
+        order: stop.order
+      }))
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error revealing journey:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
