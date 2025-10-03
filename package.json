@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "prisma:seed": "ts-node prisma/seed.ts"
   },
   "repository": {
     "type": "git",
