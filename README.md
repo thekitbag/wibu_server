@@ -46,21 +46,28 @@ This is the backend for the "What I Bought You" application. It is built with No
 
 ## Database Seeding
 
-This project includes a demo journey that showcases the application's features. To populate your database with the demo data, run:
+This project includes a demo journey that showcases the application's features. To populate your database with the demo data, first build the project and then run the seed script:
 
 ```bash
-npm run prisma:seed
+npm run build && npm run prisma:seed
 ```
 
 This script will create a demo journey titled "A Romantic Trip to Paris" with a fixed shareable token (`demo-journey-paris`) that can be used for testing and demonstration purposes. The script is idempotent, meaning it can be run multiple times safely - it will remove any existing demo journey before creating a new one.
 
 ### Production Database Seeding
 
-For production environments, use the following command to seed the live database:
+For production environments, follow these steps to seed the live database:
 
-```bash
-npx ts-node prisma/seed.ts
-```
+1. SSH into the production server
+2. Navigate to the application directory
+3. Load the Node.js environment using nvm:
+   ```bash
+   nvm use
+   ```
+4. Run the seed script:
+   ```bash
+   npm run prisma:seed
+   ```
 
 **Note:** Ensure your production environment has the necessary environment variables configured and that you have appropriate database access permissions.
 
