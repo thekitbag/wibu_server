@@ -46,7 +46,7 @@ export const createStripeCheckoutSession = async (
     ],
     mode: 'payment',
     allow_promotion_codes: true, // Enable coupon/promotion code support
-    success_url: `${clientUrl}/journeys/${journeyId}/success`,
+    success_url: `${clientUrl}/journeys/${journeyId}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${clientUrl}/journeys/${journeyId}`,
     metadata: {
       journeyId: journeyId,
@@ -96,4 +96,14 @@ export const processSuccessfulPayment = async (journeyId: string): Promise<strin
   });
 
   return shareableToken;
+};
+
+/**
+ * Retrieves a Stripe checkout session and checks its payment status
+ * @param sessionId - The Stripe checkout session ID
+ * @returns Promise<Stripe.Checkout.Session> - The Stripe session object
+ * @throws Error if session retrieval fails
+ */
+export const getStripeCheckoutSession = async (sessionId: string): Promise<Stripe.Checkout.Session> => {
+  return await stripe.checkout.sessions.retrieve(sessionId);
 };
