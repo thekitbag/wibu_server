@@ -9,3 +9,6 @@ node_modules
 
 # Ignore compiled TypeScript output
 /build
+
+# Ignore production instructions (contains sensitive info)
+PRODUCTION_INSTRUCTIONS.md

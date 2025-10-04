@@ -36,18 +36,21 @@ async function main() {
               title: 'Eiffel Tower at Sunset',
               note: 'We\'ll climb to the second floor just as the golden hour begins. The view will be breathtaking, and I know this will be the perfect moment to tell you how much you mean to me. Paris will spread out below us like a dream.',
               image_url: 'https://images.unsplash.com/photo-1549144511-f099e773c147?w=800&h=600&fit=crop',
+              external_url: 'https://www.toureiffel.paris/en/rates-opening-times',
               order: 1
             },
             {
               title: 'Café de Flore Morning',
               note: 'Our first morning in Paris will start with café au lait and fresh croissants at this legendary café. I\'ll practice my French beforehand, but I\'m sure you\'ll still laugh at my pronunciation. It will be perfect.',
               image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&h=600&fit=crop',
+              external_url: 'https://cafedeflore.fr/en/',
               order: 2
             },
             {
               title: 'Seine River Cruise',
               note: 'As we float down the Seine at twilight, Notre-Dame glowing in the distance, you\'ll rest your head on my shoulder. The gentle lapping of water and the soft lights reflecting on the river will make everything feel magical.',
               image_url: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800&h=600&fit=crop',
+              external_url: 'https://www.bateauxparisiens.com/',
               order: 3
             }
           ]

@@ -66,6 +66,7 @@ export const getJourneyById = async (req: Request, res: Response) => {
         title: string;
         note: string | null;
         image_url: string | null;
+        external_url: string | null;
         order: number;
       }>;
       shareableToken?: string;
@@ -78,6 +79,7 @@ export const getJourneyById = async (req: Request, res: Response) => {
         title: stop.title,
         note: stop.note,
         image_url: stop.image_url,
+        external_url: stop.external_url,
         order: stop.order
       }))
     };
@@ -131,6 +133,7 @@ export const revealJourneyByToken = async (req: Request, res: Response) => {
         title: stop.title,
         note: stop.note,
         image_url: stop.image_url,
+        external_url: stop.external_url,
         order: stop.order
       }))
     };

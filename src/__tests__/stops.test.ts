@@ -33,6 +33,7 @@ describe('Stops API Endpoints', () => {
       expect(response.body).toHaveProperty('title', 'First Stop');
       expect(response.body).toHaveProperty('note', 'This is a test stop');
       expect(response.body).toHaveProperty('image_url', 'https://example.com/image.jpg');
+      expect(response.body).toHaveProperty('external_url', null);
       expect(response.body).toHaveProperty('order', 1);
       expect(response.body).toHaveProperty('journeyId', testJourney.id);
       expect(typeof response.body.id).toBe('string');
@@ -45,6 +46,7 @@ describe('Stops API Endpoints', () => {
       expect(stopInDb).toBeTruthy();
       expect(stopInDb?.title).toBe('First Stop');
       expect(stopInDb?.order).toBe(1);
+      expect(stopInDb?.external_url).toBe(null);
     });
 
     it('should automatically assign correct order for multiple stops', async () => {
@@ -85,6 +87,162 @@ describe('Stops API Endpoints', () => {
       expect(response.body).toHaveProperty('title', 'Stop without note');
       expect(response.body).toHaveProperty('note', null);
       expect(response.body).toHaveProperty('image_url', 'https://example.com/image.jpg');
+      expect(response.body).toHaveProperty('external_url', null);
+    });
+
+    it('should create stop with external_url when provided', async () => {
+      const stopData = {
+        title: 'Hotel Stop',
+        note: 'Stay at this amazing hotel',
+        image_url: 'https://example.com/hotel.jpg',
+        external_url: 'https://hotel-booking.com/reservation'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body).toHaveProperty('title', 'Hotel Stop');
+      expect(response.body).toHaveProperty('note', 'Stay at this amazing hotel');
+      expect(response.body).toHaveProperty('image_url', 'https://example.com/hotel.jpg');
+      expect(response.body).toHaveProperty('external_url', 'https://hotel-booking.com/reservation');
+      expect(response.body).toHaveProperty('order', 1);
+      expect(response.body).toHaveProperty('journeyId', testJourney.id);
+
+      // Verify external_url was saved in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe('https://hotel-booking.com/reservation');
+    });
+
+    it('should create stop without external_url (optional field)', async () => {
+      const stopData = {
+        title: 'Stop without external URL',
+        image_url: 'https://example.com/image.jpg'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('title', 'Stop without external URL');
+      expect(response.body).toHaveProperty('external_url', null);
+
+      // Verify external_url is null in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe(null);
+    });
+
+    it('should automatically prepend https:// to external_url when missing protocol', async () => {
+      const stopData = {
+        title: 'Hotel with URL needing https',
+        note: 'Test URL formatting',
+        image_url: 'https://example.com/hotel.jpg',
+        external_url: 'hotel-booking.com/reservation'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('external_url', 'https://hotel-booking.com/reservation');
+
+      // Verify formatted URL was saved in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe('https://hotel-booking.com/reservation');
+    });
+
+    it('should preserve existing https:// protocol in external_url', async () => {
+      const stopData = {
+        title: 'Restaurant with https URL',
+        image_url: 'https://example.com/restaurant.jpg',
+        external_url: 'https://restaurant.com/book'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('external_url', 'https://restaurant.com/book');
+
+      // Verify URL was not modified in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe('https://restaurant.com/book');
+    });
+
+    it('should preserve existing http:// protocol in external_url', async () => {
+      const stopData = {
+        title: 'Local service with http URL',
+        image_url: 'https://example.com/service.jpg',
+        external_url: 'http://local-service.com/contact'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('external_url', 'http://local-service.com/contact');
+
+      // Verify URL was not modified in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe('http://local-service.com/contact');
+    });
+
+    it('should handle empty external_url as null', async () => {
+      const stopData = {
+        title: 'Stop with empty URL',
+        image_url: 'https://example.com/image.jpg',
+        external_url: ''
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('external_url', null);
+
+      // Verify empty string was converted to null in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe(null);
+    });
+
+    it('should trim whitespace and add https:// to external_url', async () => {
+      const stopData = {
+        title: 'Stop with URL needing trim',
+        image_url: 'https://example.com/image.jpg',
+        external_url: '  example.com/page  '
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('external_url', 'https://example.com/page');
+
+      // Verify trimmed and formatted URL in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.external_url).toBe('https://example.com/page');
     });
 
     it('should return 400 when title is missing', async () => {
@@ -211,6 +369,7 @@ describe('Stops API Endpoints', () => {
           {
             title: 'Third Stop',
             image_url: 'https://example.com/image3.jpg',
+            external_url: 'https://restaurant.com/book',
             order: 3,
             journeyId: testJourney.id
           },
@@ -224,6 +383,7 @@ describe('Stops API Endpoints', () => {
             title: 'Second Stop',
             note: 'Second stop note',
             image_url: 'https://example.com/image2.jpg',
+            external_url: 'https://hotel.com/reserve',
             order: 2,
             journeyId: testJourney.id
           }
@@ -245,17 +405,23 @@ describe('Stops API Endpoints', () => {
       expect(response.body.stops[2]).toHaveProperty('title', 'Third Stop');
       expect(response.body.stops[2]).toHaveProperty('order', 3);
 
-      // Check that all required fields are present
-      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string; order: number }) => {
+      // Check that all required fields are present including external_url
+      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string; external_url: string | null; order: number }) => {
         expect(stop).toHaveProperty('id');
         expect(stop).toHaveProperty('title');
         expect(stop).toHaveProperty('note');
         expect(stop).toHaveProperty('image_url');
+        expect(stop).toHaveProperty('external_url');
         expect(stop).toHaveProperty('order');
         expect(typeof stop.id).toBe('string');
         expect(typeof stop.title).toBe('string');
         expect(typeof stop.order).toBe('number');
       });
+
+      // Verify specific external_url values
+      expect(response.body.stops[0]).toHaveProperty('external_url', null); // First Stop
+      expect(response.body.stops[1]).toHaveProperty('external_url', 'https://hotel.com/reserve'); // Second Stop
+      expect(response.body.stops[2]).toHaveProperty('external_url', 'https://restaurant.com/book'); // Third Stop
     });
   });
 

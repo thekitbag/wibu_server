@@ -5,10 +5,31 @@ import { prisma } from '../server';
  * Creates a new stop for a journey
  * Validates required fields and automatically assigns the next order position
  */
+/**
+ * Formats external URL by adding https:// prefix if missing
+ * @param url - The URL to format
+ * @returns Formatted URL with https:// prefix or null if empty
+ */
+const formatExternalUrl = (url: string | null | undefined): string | null => {
+  if (!url || url.trim() === '') {
+    return null;
+  }
+
+  const trimmedUrl = url.trim();
+
+  // Check if URL already has a protocol (http:// or https://)
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    return trimmedUrl;
+  }
+
+  // Prepend https:// if no protocol is present
+  return `https://${trimmedUrl}`;
+};
+
 export const createStop = async (req: Request, res: Response) => {
   try {
     const { journeyId } = req.params;
-    const { title, note, image_url } = req.body;
+    const { title, note, image_url, external_url } = req.body;
 
     // Validate required fields
     if (!title) {
@@ -18,6 +39,9 @@ export const createStop = async (req: Request, res: Response) => {
     if (!image_url) {
       return res.status(400).json({ error: 'Image URL is required' });
     }
+
+    // Format external URL by adding https:// if missing
+    const formattedExternalUrl = formatExternalUrl(external_url);
 
     // Verify the parent journey exists before creating the stop
     const journey = await prisma.journey.findUnique({
@@ -42,6 +66,7 @@ export const createStop = async (req: Request, res: Response) => {
         title,
         note,
         image_url,
+        external_url: formattedExternalUrl,
         order: newOrder,
         journeyId
       }
@@ -53,6 +78,7 @@ export const createStop = async (req: Request, res: Response) => {
       title: stop.title,
       note: stop.note,
       image_url: stop.image_url,
+      external_url: stop.external_url,
       order: stop.order,
       journeyId: stop.journeyId
     });
