@@ -47,4 +47,4 @@ jobs:
             npm prune --omit=dev
             pm2 delete wibu-api || true
             pm2 save --force
-            pm2 start build/server.js --name wibu-api
+            pm2 start build/src/server.js --name wibu-api
