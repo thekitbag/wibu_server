@@ -6,3 +6,6 @@ node_modules
 
 # Ignore the local SQLite database
 /prisma/dev.db
+
+# Ignore compiled TypeScript output
+/build
