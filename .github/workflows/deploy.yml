@@ -49,6 +49,9 @@ jobs:
             npm install --production
             npx prisma migrate deploy
             npx prisma generate
-            # Force pm2 to delete the old process before starting the new one
+            # Drastically reset PM2 to avoid stale code issues
             pm2 delete wibu-api || true
+            pm2 save --force
+            
+            # Start the new application code
             pm2 start build/server.js --name wibu-api
