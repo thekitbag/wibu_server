@@ -53,5 +53,5 @@ jobs:
             pm2 delete wibu-api || true
             pm2 save --force
             
-            # Start the new application code
-            pm2 start build/server.js --name wibu-api
+            # Start the new application code using an absolute path to be explicit
+            pm2 start /var/www/wibu_server/build/server.js --name wibu-api
