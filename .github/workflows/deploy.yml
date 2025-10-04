@@ -17,42 +17,50 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
 
-      - name: Install dependencies and build
+      - name: Install, build, and package
         run: |
           npm install
           npm run build
+          tar -czf deploy.tar.gz build prisma package.json package-lock.json
 
-      - name: Deploy to server
+      - name: Copy package to server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "build,prisma,package.json,package-lock.json"
+          source: "deploy.tar.gz"
           target: "/var/www/wibu_server"
-          rm: true
 
-      - name: Run deployment commands
+      - name: Unpack and Restart Server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            # Unpack the new package
+            cd /var/www/wibu_server
+            tar -xzf deploy.tar.gz
+            rm deploy.tar.gz
+
+            # Load Node.js environment
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd /var/www/wibu_server
 
+            # Create .env file
             echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" > .env
             echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
             echo "CLIENT_URL=https://whatiboughtyou.com" >> .env
 
+            # Install production dependencies
             npm install --production
+
+            # Run database migrations and generate client
             npx prisma migrate deploy
             npx prisma generate
-            # Drastically reset PM2 to avoid stale code issues
+
+            # Reset and start the application with PM2
             pm2 delete wibu-api || true
             pm2 save --force
-            
-            # Start the new application code using an absolute path to be explicit
             pm2 start /var/www/wibu_server/build/server.js --name wibu-api
