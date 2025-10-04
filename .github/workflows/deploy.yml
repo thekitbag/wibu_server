@@ -17,50 +17,30 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
 
-      - name: Install, build, and package
+      - name: Install and Build
         run: |
           npm install
           npm run build
-          tar -czf deploy.tar.gz build prisma package.json package-lock.json
 
-      - name: Copy package to server
-        uses: appleboy/scp-action@master
+      - name: Deploy to Server and Restart
+        uses: easing-themes/ssh-deploy@v5
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "deploy.tar.gz"
-          target: "/var/www/wibu_server"
-
-      - name: Unpack and Restart Server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            # Unpack the new package
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USER }}
+          SOURCE: "build/,prisma/,package.json,package-lock.json,tsconfig.json"
+          TARGET: /var/www/wibu_server
+          EXCLUDE: "/node_modules/"
+          SCRIPT_AFTER: |
             cd /var/www/wibu_server
-            tar -xzf deploy.tar.gz
-            rm deploy.tar.gz
-
-            # Load Node.js environment
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-            # Create .env file
             echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" > .env
             echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
             echo "CLIENT_URL=https://whatiboughtyou.com" >> .env
-
-            # Install production dependencies
             npm install --production
-
-            # Run database migrations and generate client
             npx prisma migrate deploy
             npx prisma generate
-
-            # Reset and start the application with PM2
             pm2 delete wibu-api || true
             pm2 save --force
-            pm2 start /var/www/wibu_server/build/server.js --name wibu-api
+            pm2 start build/server.js --name wibu-api
