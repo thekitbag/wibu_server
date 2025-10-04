@@ -6,3 +6,9 @@ node_modules
 
 # Ignore the local SQLite database
 /prisma/dev.db
+
+# Ignore compiled TypeScript output
+/build
+
+# Ignore production instructions (contains sensitive info)
+PRODUCTION_INSTRUCTIONS.md

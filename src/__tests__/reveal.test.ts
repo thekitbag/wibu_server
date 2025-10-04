@@ -5,8 +5,22 @@ import { prisma } from './setup';
 describe('Journey Reveal API Endpoints', () => {
   beforeEach(async () => {
     // Clean up test data before each test
-    await prisma.stop.deleteMany();
-    await prisma.journey.deleteMany();
+    await prisma.stop.deleteMany({
+      where: {
+        journey: {
+          id: {
+            not: 'demo-journey-id' // Preserve demo journey stops
+          }
+        }
+      }
+    });
+    await prisma.journey.deleteMany({
+      where: {
+        id: {
+          not: 'demo-journey-id' // Preserve demo journey
+        }
+      }
+    });
   });
 
   describe('GET /api/reveal/:shareableToken', () => {
@@ -27,6 +41,7 @@ describe('Journey Reveal API Endpoints', () => {
             title: 'First Stop',
             note: 'First stop note',
             image_url: 'https://example.com/image1.jpg',
+            external_url: 'https://hotel.example.com',
             order: 1,
             journeyId: journey.id
           },
@@ -34,6 +49,7 @@ describe('Journey Reveal API Endpoints', () => {
             title: 'Second Stop',
             note: 'Second stop note',
             image_url: 'https://example.com/image2.jpg',
+            external_url: null,
             order: 2,
             journeyId: journey.id
           }
@@ -55,6 +71,21 @@ describe('Journey Reveal API Endpoints', () => {
       expect(response.body.stops[0]).toHaveProperty('order', 1);
       expect(response.body.stops[1]).toHaveProperty('title', 'Second Stop');
       expect(response.body.stops[1]).toHaveProperty('order', 2);
+
+      // Verify external_url field is present and correct
+      expect(response.body.stops[0]).toHaveProperty('external_url', 'https://hotel.example.com');
+      expect(response.body.stops[1]).toHaveProperty('external_url', null);
+
+      // Verify all stop fields are present
+      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string | null; icon_name: string | null; external_url: string | null; order: number }) => {
+        expect(stop).toHaveProperty('id');
+        expect(stop).toHaveProperty('title');
+        expect(stop).toHaveProperty('note');
+        expect(stop).toHaveProperty('image_url');
+        expect(stop).toHaveProperty('icon_name');
+        expect(stop).toHaveProperty('external_url');
+        expect(stop).toHaveProperty('order');
+      });
 
       // Verify shareable token is NOT included in response (security)
       expect(response.body).not.toHaveProperty('shareableToken');

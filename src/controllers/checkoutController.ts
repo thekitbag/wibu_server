@@ -52,6 +52,8 @@ export const checkCheckoutSessionStatus = async (req: Request, res: Response) =>
             title: string;
             note: string | null;
             image_url: string | null;
+            icon_name: string | null;
+            external_url: string | null;
             order: number;
           }>;
           shareableToken?: string;
@@ -67,6 +69,8 @@ export const checkCheckoutSessionStatus = async (req: Request, res: Response) =>
             title: stop.title,
             note: stop.note,
             image_url: stop.image_url,
+            icon_name: stop.icon_name,
+            external_url: stop.external_url,
             order: stop.order
           }))
         }
