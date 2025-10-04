@@ -6,6 +6,8 @@ import revealRoutes from './routes/reveal';
 import checkoutRoutes from './routes/checkout';
 import stopRoutes from './routes/stops';
 
+console.log(`[Tracer] Starting WIBU Server. Version: ${new Date().toISOString()}`);
+
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
