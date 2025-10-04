@@ -23,7 +23,7 @@ jobs:
           npm run build
 
       - name: Deploy to Server and Restart
-        uses: easing-themes/ssh-deploy@v5
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           REMOTE_HOST: ${{ secrets.SSH_HOST }}
@@ -35,12 +35,16 @@ jobs:
             cd /var/www/wibu_server
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" > .env
+            # Preserve existing .env; append or create if missing
+            touch .env
+            echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env
             echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
             echo "CLIENT_URL=https://whatiboughtyou.com" >> .env
-            npm install --production
+            # Install with dev deps to ensure Prisma CLI is available, then prune
+            npm ci
             npx prisma migrate deploy
             npx prisma generate
+            npm prune --omit=dev
             pm2 delete wibu-api || true
             pm2 save --force
             pm2 start build/server.js --name wibu-api
