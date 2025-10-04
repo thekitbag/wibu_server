@@ -28,18 +28,18 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           REMOTE_HOST: ${{ secrets.SSH_HOST }}
           REMOTE_USER: ${{ secrets.SSH_USER }}
-          SOURCE: "build/,prisma/,package.json,package-lock.json,tsconfig.json"
+          SOURCE: "build/ prisma/ package.json package-lock.json tsconfig.json"
           TARGET: /var/www/wibu_server
           EXCLUDE: "/node_modules/"
           SCRIPT_AFTER: |
             cd /var/www/wibu_server
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            # Preserve existing .env; append or create if missing
+            # Ensure .env exists and update keys idempotently
             touch .env
-            echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env
-            echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
-            echo "CLIENT_URL=https://whatiboughtyou.com" >> .env
+            if grep -q '^STRIPE_SECRET_KEY=' .env; then sed -i 's|^STRIPE_SECRET_KEY=.*|STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}|' .env; else echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env; fi
+            if grep -q '^STRIPE_WEBHOOK_SECRET=' .env; then sed -i 's|^STRIPE_WEBHOOK_SECRET=.*|STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}|' .env; else echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env; fi
+            if grep -q '^CLIENT_URL=' .env; then sed -i 's|^CLIENT_URL=.*|CLIENT_URL=https://whatiboughtyou.com|' .env; else echo "CLIENT_URL=https://whatiboughtyou.com" >> .env; fi
             # Install with dev deps to ensure Prisma CLI is available, then prune
             npm ci
             npx prisma migrate deploy
