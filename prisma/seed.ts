@@ -10,15 +10,20 @@ async function main() {
   try {
     // First, attempt to find and delete any existing demo journey to prevent duplicates
     console.log('🔍 Checking for existing demo journey...');
-    const existingJourney = await prisma.journey.findUnique({
-      where: { shareableToken: DEMO_JOURNEY_TOKEN },
+    const existingJourney = await prisma.journey.findFirst({
+      where: {
+        OR: [
+          { id: 'demo-journey-id' },
+          { shareableToken: DEMO_JOURNEY_TOKEN }
+        ]
+      },
       include: { stops: true }
     });
 
     if (existingJourney) {
       console.log(`🗑️  Removing existing demo journey: ${existingJourney.title}`);
       await prisma.journey.delete({
-        where: { shareableToken: DEMO_JOURNEY_TOKEN }
+        where: { id: existingJourney.id }
       });
       console.log('✅ Existing demo journey removed');
     }
@@ -27,6 +32,7 @@ async function main() {
     console.log('🏗️  Creating new demo journey...');
     const demoJourney = await prisma.journey.create({
       data: {
+        id: 'demo-journey-id', // Fixed ID for test preservation
         title: 'A Romantic Trip to Paris',
         paid: true,
         shareableToken: DEMO_JOURNEY_TOKEN,

@@ -26,22 +26,61 @@ const formatExternalUrl = (url: string | null | undefined): string | null => {
   return `https://${trimmedUrl}`;
 };
 
+/**
+ * Allowed icon names for stops
+ */
+const ALLOWED_ICONS = ['Plane', 'Hotel', 'Restaurant', 'Gift', 'Heart'] as const;
+
+/**
+ * Validates that exactly one of image_url or icon_name is provided
+ * @param image_url - The image URL
+ * @param icon_name - The icon name
+ * @returns Object with validation result and error message if invalid
+ */
+const validateImageOrIcon = (image_url: string | null | undefined, icon_name: string | null | undefined): { isValid: boolean; error?: string } => {
+  const hasImage = image_url && image_url.trim() !== '';
+  const hasIcon = icon_name && icon_name.trim() !== '';
+
+  if (!hasImage && !hasIcon) {
+    return { isValid: false, error: 'Either image_url or icon_name is required' };
+  }
+
+  if (hasImage && hasIcon) {
+    return { isValid: false, error: 'Cannot provide both image_url and icon_name' };
+  }
+
+  if (hasIcon && !ALLOWED_ICONS.map(icon => icon.toLowerCase()).includes(icon_name!.trim().toLowerCase())) {
+    return { isValid: false, error: `Invalid icon name. Allowed icons: ${ALLOWED_ICONS.join(', ')}` };
+  }
+
+  return { isValid: true };
+};
+
 export const createStop = async (req: Request, res: Response) => {
   try {
     const { journeyId } = req.params;
-    const { title, note, image_url, external_url } = req.body;
+    const { title, note, image_url, icon_name, external_url } = req.body;
 
     // Validate required fields
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
     }
 
-    if (!image_url) {
-      return res.status(400).json({ error: 'Image URL is required' });
+    // Validate that exactly one of image_url or icon_name is provided
+    const imageIconValidation = validateImageOrIcon(image_url, icon_name);
+    if (!imageIconValidation.isValid) {
+      return res.status(400).json({ error: imageIconValidation.error });
     }
 
     // Format external URL by adding https:// if missing
     const formattedExternalUrl = formatExternalUrl(external_url);
+
+    // Clean up the input values
+    const cleanImageUrl = image_url && image_url.trim() !== '' ? image_url.trim() : null;
+    // Normalize icon name to proper case (find matching icon from allowed list)
+    const cleanIconName = icon_name && icon_name.trim() !== ''
+      ? ALLOWED_ICONS.find(allowedIcon => allowedIcon.toLowerCase() === icon_name.trim().toLowerCase()) || null
+      : null;
 
     // Verify the parent journey exists before creating the stop
     const journey = await prisma.journey.findUnique({
@@ -65,7 +104,8 @@ export const createStop = async (req: Request, res: Response) => {
       data: {
         title,
         note,
-        image_url,
+        image_url: cleanImageUrl,
+        icon_name: cleanIconName,
         external_url: formattedExternalUrl,
         order: newOrder,
         journeyId
@@ -78,6 +118,7 @@ export const createStop = async (req: Request, res: Response) => {
       title: stop.title,
       note: stop.note,
       image_url: stop.image_url,
+      icon_name: stop.icon_name,
       external_url: stop.external_url,
       order: stop.order,
       journeyId: stop.journeyId

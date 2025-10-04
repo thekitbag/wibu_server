@@ -21,8 +21,22 @@ import { prisma } from './setup';
 
 describe('Payment API Endpoints', () => {
   beforeEach(async () => {
-    await prisma.stop.deleteMany();
-    await prisma.journey.deleteMany();
+    await prisma.stop.deleteMany({
+      where: {
+        journey: {
+          id: {
+            not: 'demo-journey-id' // Preserve demo journey stops
+          }
+        }
+      }
+    });
+    await prisma.journey.deleteMany({
+      where: {
+        id: {
+          not: 'demo-journey-id' // Preserve demo journey
+        }
+      }
+    });
 
     // Reset all mocks before each test
     jest.clearAllMocks();

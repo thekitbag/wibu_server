@@ -25,7 +25,8 @@ model Stop {
   id           String  @id @default(cuid())
   title        String
   note         String?
-  image_url    String
+  image_url    String?
+  icon_name    String?
   external_url String?
   order        Int
   journeyId    String

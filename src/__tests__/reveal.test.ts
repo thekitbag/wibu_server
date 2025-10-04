@@ -5,8 +5,22 @@ import { prisma } from './setup';
 describe('Journey Reveal API Endpoints', () => {
   beforeEach(async () => {
     // Clean up test data before each test
-    await prisma.stop.deleteMany();
-    await prisma.journey.deleteMany();
+    await prisma.stop.deleteMany({
+      where: {
+        journey: {
+          id: {
+            not: 'demo-journey-id' // Preserve demo journey stops
+          }
+        }
+      }
+    });
+    await prisma.journey.deleteMany({
+      where: {
+        id: {
+          not: 'demo-journey-id' // Preserve demo journey
+        }
+      }
+    });
   });
 
   describe('GET /api/reveal/:shareableToken', () => {
@@ -63,11 +77,12 @@ describe('Journey Reveal API Endpoints', () => {
       expect(response.body.stops[1]).toHaveProperty('external_url', null);
 
       // Verify all stop fields are present
-      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string; external_url: string | null; order: number }) => {
+      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string | null; icon_name: string | null; external_url: string | null; order: number }) => {
         expect(stop).toHaveProperty('id');
         expect(stop).toHaveProperty('title');
         expect(stop).toHaveProperty('note');
         expect(stop).toHaveProperty('image_url');
+        expect(stop).toHaveProperty('icon_name');
         expect(stop).toHaveProperty('external_url');
         expect(stop).toHaveProperty('order');
       });

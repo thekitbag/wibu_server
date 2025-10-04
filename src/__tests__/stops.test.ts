@@ -6,9 +6,23 @@ describe('Stops API Endpoints', () => {
   let testJourney: { id: string; title: string };
 
   beforeEach(async () => {
-    // Clean up first
-    await prisma.stop.deleteMany();
-    await prisma.journey.deleteMany();
+    // Clean up test data only, preserve demo journey
+    await prisma.stop.deleteMany({
+      where: {
+        journey: {
+          id: {
+            not: 'demo-journey-id' // Preserve demo journey stops
+          }
+        }
+      }
+    });
+    await prisma.journey.deleteMany({
+      where: {
+        id: {
+          not: 'demo-journey-id' // Preserve demo journey
+        }
+      }
+    });
 
     // Then create a test journey for each test
     testJourney = await prisma.journey.create({
@@ -17,7 +31,7 @@ describe('Stops API Endpoints', () => {
   });
 
   describe('POST /api/journeys/:journeyId/stops', () => {
-    it('should create a new stop with valid data', async () => {
+    it('should create a new stop with valid image data', async () => {
       const stopData = {
         title: 'First Stop',
         note: 'This is a test stop',
@@ -33,6 +47,7 @@ describe('Stops API Endpoints', () => {
       expect(response.body).toHaveProperty('title', 'First Stop');
       expect(response.body).toHaveProperty('note', 'This is a test stop');
       expect(response.body).toHaveProperty('image_url', 'https://example.com/image.jpg');
+      expect(response.body).toHaveProperty('icon_name', null);
       expect(response.body).toHaveProperty('external_url', null);
       expect(response.body).toHaveProperty('order', 1);
       expect(response.body).toHaveProperty('journeyId', testJourney.id);
@@ -46,6 +61,8 @@ describe('Stops API Endpoints', () => {
       expect(stopInDb).toBeTruthy();
       expect(stopInDb?.title).toBe('First Stop');
       expect(stopInDb?.order).toBe(1);
+      expect(stopInDb?.image_url).toBe('https://example.com/image.jpg');
+      expect(stopInDb?.icon_name).toBe(null);
       expect(stopInDb?.external_url).toBe(null);
     });
 
@@ -245,6 +262,171 @@ describe('Stops API Endpoints', () => {
       expect(stopInDb?.external_url).toBe('https://example.com/page');
     });
 
+    // Icon-based stop tests
+    it('should create a stop with valid icon name', async () => {
+      const stopData = {
+        title: 'Hotel Stop',
+        note: 'Stay at this hotel',
+        icon_name: 'Hotel'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body).toHaveProperty('title', 'Hotel Stop');
+      expect(response.body).toHaveProperty('note', 'Stay at this hotel');
+      expect(response.body).toHaveProperty('image_url', null);
+      expect(response.body).toHaveProperty('icon_name', 'Hotel');
+      expect(response.body).toHaveProperty('order', 1);
+
+      // Verify icon was saved in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.icon_name).toBe('Hotel');
+      expect(stopInDb?.image_url).toBe(null);
+    });
+
+    it('should accept all valid icon names', async () => {
+      const validIcons = ['Plane', 'Hotel', 'Restaurant', 'Gift', 'Heart'];
+
+      for (let i = 0; i < validIcons.length; i++) {
+        const stopData = {
+          title: `${validIcons[i]} Stop`,
+          icon_name: validIcons[i]
+        };
+
+        const response = await request(app)
+          .post(`/api/journeys/${testJourney.id}/stops`)
+          .send(stopData)
+          .expect(201);
+
+        expect(response.body).toHaveProperty('icon_name', validIcons[i]);
+        expect(response.body).toHaveProperty('image_url', null);
+        expect(response.body).toHaveProperty('order', i + 1);
+      }
+    });
+
+    it('should return 400 when icon_name is invalid', async () => {
+      const stopData = {
+        title: 'Invalid Icon Stop',
+        icon_name: 'InvalidIcon'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('Invalid icon name');
+      expect(response.body.error).toContain('Plane, Hotel, Restaurant, Gift, Heart');
+    });
+
+    it('should accept case-insensitive icon names and normalize them', async () => {
+      const testCases = [
+        { input: 'hotel', expected: 'Hotel' },
+        { input: 'PLANE', expected: 'Plane' },
+        { input: 'rEsTaUrAnT', expected: 'Restaurant' },
+        { input: 'gift', expected: 'Gift' },
+        { input: 'HEART', expected: 'Heart' }
+      ];
+
+      for (let i = 0; i < testCases.length; i++) {
+        const stopData = {
+          title: `${testCases[i].input} Stop`,
+          icon_name: testCases[i].input
+        };
+
+        const response = await request(app)
+          .post(`/api/journeys/${testJourney.id}/stops`)
+          .send(stopData)
+          .expect(201);
+
+        expect(response.body).toHaveProperty('icon_name', testCases[i].expected);
+        expect(response.body).toHaveProperty('image_url', null);
+      }
+    });
+
+    it('should return 400 when both image_url and icon_name are provided', async () => {
+      const stopData = {
+        title: 'Stop with both image and icon',
+        image_url: 'https://example.com/image.jpg',
+        icon_name: 'Hotel'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'Cannot provide both image_url and icon_name');
+    });
+
+    it('should return 400 when neither image_url nor icon_name are provided', async () => {
+      const stopData = {
+        title: 'Stop without image or icon'
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'Either image_url or icon_name is required');
+    });
+
+    it('should return 400 when image_url is empty string', async () => {
+      const stopData = {
+        title: 'Stop with empty image URL',
+        image_url: ''
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'Either image_url or icon_name is required');
+    });
+
+    it('should return 400 when icon_name is empty string', async () => {
+      const stopData = {
+        title: 'Stop with empty icon name',
+        icon_name: ''
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'Either image_url or icon_name is required');
+    });
+
+    it('should trim whitespace from icon_name', async () => {
+      const stopData = {
+        title: 'Stop with padded icon name',
+        icon_name: '  Hotel  '
+      };
+
+      const response = await request(app)
+        .post(`/api/journeys/${testJourney.id}/stops`)
+        .send(stopData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('icon_name', 'Hotel');
+
+      // Verify trimmed icon name in database
+      const stopInDb = await prisma.stop.findUnique({
+        where: { id: response.body.id }
+      });
+      expect(stopInDb?.icon_name).toBe('Hotel');
+    });
+
     it('should return 400 when title is missing', async () => {
       const stopData = {
         image_url: 'https://example.com/image.jpg'
@@ -270,33 +452,6 @@ describe('Stops API Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('error', 'Title is required');
-    });
-
-    it('should return 400 when image_url is missing', async () => {
-      const stopData = {
-        title: 'Test Stop'
-      };
-
-      const response = await request(app)
-        .post(`/api/journeys/${testJourney.id}/stops`)
-        .send(stopData)
-        .expect(400);
-
-      expect(response.body).toHaveProperty('error', 'Image URL is required');
-    });
-
-    it('should return 400 when image_url is empty string', async () => {
-      const stopData = {
-        title: 'Test Stop',
-        image_url: ''
-      };
-
-      const response = await request(app)
-        .post(`/api/journeys/${testJourney.id}/stops`)
-        .send(stopData)
-        .expect(400);
-
-      expect(response.body).toHaveProperty('error', 'Image URL is required');
     });
 
     it('should return 404 when journey does not exist', async () => {
@@ -405,12 +560,13 @@ describe('Stops API Endpoints', () => {
       expect(response.body.stops[2]).toHaveProperty('title', 'Third Stop');
       expect(response.body.stops[2]).toHaveProperty('order', 3);
 
-      // Check that all required fields are present including external_url
-      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string; external_url: string | null; order: number }) => {
+      // Check that all required fields are present including icon_name and external_url
+      response.body.stops.forEach((stop: { id: string; title: string; note: string | null; image_url: string | null; icon_name: string | null; external_url: string | null; order: number }) => {
         expect(stop).toHaveProperty('id');
         expect(stop).toHaveProperty('title');
         expect(stop).toHaveProperty('note');
         expect(stop).toHaveProperty('image_url');
+        expect(stop).toHaveProperty('icon_name');
         expect(stop).toHaveProperty('external_url');
         expect(stop).toHaveProperty('order');
         expect(typeof stop.id).toBe('string');
@@ -418,10 +574,13 @@ describe('Stops API Endpoints', () => {
         expect(typeof stop.order).toBe('number');
       });
 
-      // Verify specific external_url values
+      // Verify specific field values
       expect(response.body.stops[0]).toHaveProperty('external_url', null); // First Stop
+      expect(response.body.stops[0]).toHaveProperty('icon_name', null); // First Stop
       expect(response.body.stops[1]).toHaveProperty('external_url', 'https://hotel.com/reserve'); // Second Stop
+      expect(response.body.stops[1]).toHaveProperty('icon_name', null); // Second Stop
       expect(response.body.stops[2]).toHaveProperty('external_url', 'https://restaurant.com/book'); // Third Stop
+      expect(response.body.stops[2]).toHaveProperty('icon_name', null); // Third Stop
     });
   });
 
