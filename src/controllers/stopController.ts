@@ -128,3 +128,81 @@ export const createStop = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+/**
+ * Updates an existing stop by ID
+ * Validates required fields and image/icon constraints
+ */
+export const updateStop = async (req: Request, res: Response) => {
+  try {
+    const { stopId } = req.params;
+    const { title, note, image_url, icon_name, external_url } = req.body;
+
+    // Check if stop exists first
+    const existingStop = await prisma.stop.findUnique({
+      where: { id: stopId }
+    });
+
+    if (!existingStop) {
+      return res.status(404).json({ error: 'Stop not found' });
+    }
+
+    // If title is provided, validate it's not empty
+    if (title !== undefined && !title) {
+      return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+
+    // Determine final values for image_url and icon_name
+    // If neither is provided in the update, keep existing values
+    const finalImageUrl = image_url !== undefined
+      ? (image_url && image_url.trim() !== '' ? image_url.trim() : null)
+      : existingStop.image_url;
+
+    const finalIconName = icon_name !== undefined
+      ? (icon_name && icon_name.trim() !== '' ? icon_name.trim() : null)
+      : existingStop.icon_name;
+
+    // Validate that exactly one of image_url or icon_name is provided
+    const imageIconValidation = validateImageOrIcon(finalImageUrl, finalIconName);
+    if (!imageIconValidation.isValid) {
+      return res.status(400).json({ error: imageIconValidation.error });
+    }
+
+    // Format external URL by adding https:// if missing
+    const formattedExternalUrl = external_url !== undefined
+      ? formatExternalUrl(external_url)
+      : existingStop.external_url;
+
+    // Normalize icon name to proper case (find matching icon from allowed list)
+    const cleanIconName = finalIconName
+      ? ALLOWED_ICONS.find(allowedIcon => allowedIcon.toLowerCase() === finalIconName.toLowerCase()) || null
+      : null;
+
+    // Update the stop with the provided changes
+    const updatedStop = await prisma.stop.update({
+      where: { id: stopId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(note !== undefined && { note }),
+        image_url: finalImageUrl,
+        icon_name: cleanIconName,
+        external_url: formattedExternalUrl
+      }
+    });
+
+    // Return the updated stop data
+    res.json({
+      id: updatedStop.id,
+      title: updatedStop.title,
+      note: updatedStop.note,
+      image_url: updatedStop.image_url,
+      icon_name: updatedStop.icon_name,
+      external_url: updatedStop.external_url,
+      order: updatedStop.order,
+      journeyId: updatedStop.journeyId
+    });
+  } catch (error) {
+    console.error('Error updating stop:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

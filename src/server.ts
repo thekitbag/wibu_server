@@ -4,6 +4,7 @@ import journeyRoutes from './routes/journeys';
 import webhookRoutes from './routes/webhooks';
 import revealRoutes from './routes/reveal';
 import checkoutRoutes from './routes/checkout';
+import stopRoutes from './routes/stops';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -22,6 +23,7 @@ app.get('/', (req, res) => {
 app.use('/api/journeys', journeyRoutes);
 app.use('/api/reveal', revealRoutes);
 app.use('/api/checkout-session', checkoutRoutes);
+app.use('/api/stops', stopRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
