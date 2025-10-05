@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../server';
+import { createPublicJourneySummary } from '../services/journeyService';
 
 /**
  * Creates a new journey with the provided title
@@ -144,6 +145,40 @@ export const revealJourneyByToken = async (req: Request, res: Response) => {
     res.json(response);
   } catch (error) {
     console.error('Error revealing journey:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Retrieves public-safe summaries of paid journeys
+ * Returns sanitized data without private information for public display
+ */
+export const getPublicJourneys = async (req: Request, res: Response) => {
+  try {
+    // Fetch the 10 most recent paid journeys with their stops
+    const journeys = await prisma.journey.findMany({
+      where: {
+        paid: true
+      },
+      include: {
+        stops: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      },
+      orderBy: {
+        id: 'desc' // Most recent first
+      },
+      take: 10
+    });
+
+    // Transform each journey to public-safe summary
+    const publicSummaries = journeys.map(journey => createPublicJourneySummary(journey));
+
+    res.json(publicSummaries);
+  } catch (error) {
+    console.error('Error fetching public journeys:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
