@@ -166,6 +166,158 @@ describe('Journey API Endpoints', () => {
     });
   });
 
+  describe('GET /api/journeys/public/:journeyId', () => {
+    it('should return public summary for existing journey', async () => {
+      const journey = await prisma.journey.create({
+        data: { title: 'Public Journey Test' }
+      });
+
+      await prisma.stop.create({
+        data: {
+          title: 'First Stop',
+          note: 'Private note',
+          image_url: 'https://example.com/image.jpg',
+          external_url: 'https://private-link.com',
+          order: 1,
+          journeyId: journey.id
+        }
+      });
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${journey.id}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        journeyTitle: 'Public Journey Test',
+        heroImageUrl: 'https://example.com/image.jpg',
+        highlights: ['First Stop']
+      });
+
+      expect(response.body).not.toHaveProperty('id');
+      expect(response.body).not.toHaveProperty('paid');
+      expect(response.body).not.toHaveProperty('stops');
+      expect(response.body).not.toHaveProperty('note');
+      expect(response.body).not.toHaveProperty('external_url');
+    });
+
+    it('should return 404 for non-existent journey', async () => {
+      const nonExistentId = 'clfake1234567890';
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${nonExistentId}`)
+        .expect(404);
+
+      expect(response.body).toHaveProperty('error', 'Journey not found');
+    });
+
+    it('should handle journey with multiple stops correctly', async () => {
+      const journey = await prisma.journey.create({
+        data: { title: 'Multi-Stop Journey' }
+      });
+
+      await prisma.stop.createMany({
+        data: [
+          {
+            title: 'Second Stop',
+            note: 'Private note 2',
+            image_url: null,
+            icon_name: 'Restaurant',
+            external_url: 'https://restaurant.com',
+            order: 2,
+            journeyId: journey.id
+          },
+          {
+            title: 'First Stop',
+            note: 'Private note 1',
+            image_url: 'https://example.com/hero.jpg',
+            external_url: 'https://first.com',
+            order: 1,
+            journeyId: journey.id
+          },
+          {
+            title: 'Third Stop',
+            note: 'Private note 3',
+            image_url: 'https://example.com/third.jpg',
+            external_url: 'https://third.com',
+            order: 3,
+            journeyId: journey.id
+          }
+        ]
+      });
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${journey.id}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        journeyTitle: 'Multi-Stop Journey',
+        heroImageUrl: 'https://example.com/hero.jpg',
+        highlights: ['First Stop', 'Second Stop', 'Third Stop']
+      });
+    });
+
+    it('should handle journey with no stops', async () => {
+      const journey = await prisma.journey.create({
+        data: { title: 'Empty Journey' }
+      });
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${journey.id}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        journeyTitle: 'Empty Journey',
+        heroImageUrl: null,
+        highlights: []
+      });
+    });
+
+    it('should handle malformed journey ID gracefully', async () => {
+      const malformedId = 'invalid-id-format';
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${malformedId}`)
+        .expect(404);
+
+      expect(response.body).toHaveProperty('error', 'Journey not found');
+    });
+
+    it('should return correctly sanitized data without private information', async () => {
+      const journey = await prisma.journey.create({
+        data: {
+          title: 'Privacy Test Journey',
+          paid: true,
+          shareableToken: 'secret-token-123'
+        }
+      });
+
+      await prisma.stop.create({
+        data: {
+          title: 'Public Stop Title',
+          note: 'This is very private and personal information',
+          image_url: 'https://example.com/public.jpg',
+          icon_name: null,
+          external_url: 'https://private-booking-link.com',
+          order: 1,
+          journeyId: journey.id
+        }
+      });
+
+      const response = await request(app)
+        .get(`/api/journeys/public/${journey.id}`)
+        .expect(200);
+
+      const resultString = JSON.stringify(response.body);
+      expect(resultString).not.toContain('private');
+      expect(resultString).not.toContain('personal');
+      expect(resultString).not.toContain('secret-token');
+      expect(resultString).not.toContain('private-booking-link');
+      expect(resultString).not.toContain('paid');
+
+      expect(Object.keys(response.body)).toEqual(['journeyTitle', 'heroImageUrl', 'highlights']);
+    });
+  });
+
   describe('Content-Type and Headers', () => {
     it('should handle malformed JSON gracefully', async () => {
       await request(app)
