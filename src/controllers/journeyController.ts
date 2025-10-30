@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../server';
+import { createPublicJourneySummary } from '../services/journeyService';
 
 /**
  * Creates a new journey with the provided title
@@ -144,6 +145,75 @@ export const revealJourneyByToken = async (req: Request, res: Response) => {
     res.json(response);
   } catch (error) {
     console.error('Error revealing journey:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Retrieves public-safe summaries of paid journeys
+ * Returns sanitized data without private information for public display
+ */
+export const getPublicJourneys = async (req: Request, res: Response) => {
+  try {
+    // Fetch the 10 most recent paid journeys with their stops
+    const journeys = await prisma.journey.findMany({
+      where: {
+        paid: true
+      },
+      include: {
+        stops: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      },
+      orderBy: {
+        id: 'desc' // Most recent first
+      },
+      take: 10
+    });
+
+    // Transform each journey to public-safe summary
+    const publicSummaries = journeys.map(journey => createPublicJourneySummary(journey));
+
+    res.json(publicSummaries);
+  } catch (error) {
+    console.error('Error fetching public journeys:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Retrieves a public-safe summary of a single journey by ID
+ * Returns sanitized data without private information for social sharing
+ */
+export const getPublicJourneyById = async (req: Request, res: Response) => {
+  try {
+    const { journeyId } = req.params;
+
+    // Fetch the journey with its stops
+    const journey = await prisma.journey.findUnique({
+      where: { id: journeyId },
+      include: {
+        stops: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    });
+
+    // Return 404 if journey not found
+    if (!journey) {
+      return res.status(404).json({ error: 'Journey not found' });
+    }
+
+    // Transform to public-safe summary
+    const publicSummary = createPublicJourneySummary(journey);
+
+    res.json(publicSummary);
+  } catch (error) {
+    console.error('Error fetching public journey:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
