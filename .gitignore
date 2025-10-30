@@ -12,3 +12,4 @@ node_modules
 
 # Ignore production instructions (contains sensitive info)
 PRODUCTION_INSTRUCTIONS.md
+coverage/
