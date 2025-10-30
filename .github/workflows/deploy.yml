@@ -44,6 +44,7 @@ jobs:
             npm ci
             npx prisma migrate deploy
             npx prisma generate
+            npx prisma db seed
             npm prune --omit=dev
             pm2 delete wibu-api || true
             pm2 save --force
